@@ -119,6 +119,23 @@ def validate_entry(value) -> str:
     return value
 
 
+def verify_written(path, expected) -> None:
+    """Re-read the written file and confirm it holds exactly the entry.
+
+    The gate is 1-280 characters of UTF-8 text, one line, not only
+    white space, so the file must hold exactly the entry we intended
+    to write. The comparison is explicit rather than an assert so it
+    still fires when Python is run with -O (which strips asserts):
+    a mismatch exits non-zero instead of silently passing.
+    """
+    with open(path, "rb") as f:
+        data = f.read()
+    if validate_entry(data) != expected:
+        raise SystemExit(
+            "read-back mismatch: entry.txt does not hold the intended entry"
+        )
+
+
 def main() -> None:
     # Pre-write guard: refuse to write anything that fails the gate.
     validate_entry(ENTRY)
@@ -127,18 +144,8 @@ def main() -> None:
     path = os.path.join(out_dir, "entry.txt")
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(ENTRY)
-    # Read-back validation: the gate is 1-280 characters of UTF-8
-    # text, one line, not only white space, so the file must hold
-    # exactly the entry we intended to write. This comparison is
-    # explicit rather than an assert so it still fires when Python
-    # is run with -O (which strips asserts): a mismatch exits
-    # non-zero instead of silently passing.
-    with open(path, "rb") as f:
-        data = f.read()
-    if validate_entry(data) != ENTRY:
-        raise SystemExit(
-            "read-back mismatch: entry.txt does not hold the intended entry"
-        )
+    # Read-back validation via the extracted helper.
+    verify_written(path, ENTRY)
     print(ENTRY)
 
 
